@@ -79,6 +79,21 @@ main { padding: 24px; max-width: 1000px; margin: 0 auto; }
 .wow .chars a { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; text-decoration: none; color: inherit; }
 .wow .chars a div { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .wow .chars img, .wow .chars .avatar { width: 56px; height: 56px; border-radius: 8px; flex: none; background: #8882; }
+.wow .chars li[draggable="true"] { cursor: grab; }
+.wow .chars li.dragging { opacity: .4; }
+.wow .chars .game { font-weight: 600; }
+.wow .chars .move { display: none; max-width: 110px; }
+@media (pointer: coarse) { .wow .chars .move { display: block; } }
+.wow .group { margin: 0 0 16px; padding: 8px 12px 12px; border: 1px dashed #8885; border-radius: 14px; }
+.wow .group.over { border-style: solid; border-color: currentColor; background: #8881; }
+.wow .group h2 { margin: 4px 0 8px; font-size: 1.1em; }
+.wow .group h2 small { opacity: .6; font-weight: normal; }
+.wow .group .chars { margin: 0; }
+.wow .group .empty { margin: 4px 0; opacity: .6; }
+.wow .group-head { display: flex; align-items: center; gap: 6px; }
+.wow .group-head h2 { flex: 1; cursor: text; }
+.wow .group-head input { flex: 1; font-size: 1.1em; font-weight: 700; margin: 4px 0 8px; }
+.wow .group-head button { background: none; border: none; color: inherit; cursor: pointer; opacity: .7; }
 .wow .hero { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border: 1px solid #8884; border-left: 6px solid #8884; border-radius: 12px; overflow: hidden; }
 .wow .hero > img:first-child { width: 84px; height: 84px; border-radius: 10px; flex: none; }
 .wow .hero div { flex: 1; min-width: 0; }

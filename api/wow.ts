@@ -1,10 +1,18 @@
 // Vercel Function (self-hosted über server/index.mjs): schmaler Proxy zur Blizzard API. Das Client-Secret bleibt auf dem Server.
-// Aufruf: /api/wow?region=eu&namespace=profile&path=/profile/wow/character/<realm>/<name>
+// Aufruf: /api/wow?region=eu&namespace=profile&path=/profile/wow/character/<realm>/<name>[&game=classic]
 
 declare const process: { env: Record<string, string | undefined> }
 
 const REGIONS = new Set(['eu', 'us'])
 const NAMESPACES = new Set(['profile', 'static', 'dynamic'])
+// Spielversion → Namespace-Infix (profile-classic-eu usw.). Retail hat keinen.
+const GAMES = new Map([
+  ['retail', ''],
+  ['classic', 'classic-'], // Classic-Progression (aktuelle Erweiterung)
+  ['classic1x', 'classic1x-'], // Classic Era, Hardcore, Season of Discovery
+  ['classicann', 'classicann-'], // Anniversary-Realms
+  ['forever', 'forever-'], // WoW: Forever (noch undokumentiert)
+])
 const ALLOWED_PATH = /^\/(profile\/wow\/character\/[^?#]+|data\/wow\/(achievement\/index|realm\/index))$/
 
 let token: { value: string; expires: number } | null = null
@@ -51,14 +59,17 @@ export async function GET(request: Request) {
   const region = params.get('region') ?? ''
   const namespace = params.get('namespace') ?? ''
   const path = params.get('path') ?? ''
-  if (!REGIONS.has(region) || !NAMESPACES.has(namespace) || !ALLOWED_PATH.test(path)) {
+  const game = params.get('game') ?? 'retail'
+  // Statische Daten (Erfolgs-Index) nur für Retail: Classic/Forever nutzen versionierte static-Namespaces.
+  const validGame = GAMES.has(game) && (game === 'retail' || namespace !== 'static')
+  if (!REGIONS.has(region) || !NAMESPACES.has(namespace) || !validGame || !ALLOWED_PATH.test(path)) {
     return json(400, { error: 'Ungültige Anfrage' })
   }
   if (!(await isSignedIn(request))) return json(401, { error: 'Nicht angemeldet' })
 
   try {
     const target = new URL(`https://${region}.api.blizzard.com${path}`)
-    target.searchParams.set('namespace', `${namespace}-${region}`)
+    target.searchParams.set('namespace', `${namespace}-${GAMES.get(game)}${region}`)
     target.searchParams.set('locale', 'de_DE')
     const res = await fetch(target, { headers: { Authorization: `Bearer ${await blizzardToken()}` } })
     const cache = namespace === 'profile' ? 'private, max-age=60' : 'public, s-maxage=86400'

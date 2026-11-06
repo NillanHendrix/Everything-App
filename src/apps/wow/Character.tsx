@@ -3,8 +3,10 @@ import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import {
   asset,
+  CHARACTER_COLUMNS,
   CLASS_COLORS,
   cssColor,
+  gameLabel,
   getAchievementIndex,
   getAchievements,
   getMedia,
@@ -44,7 +46,7 @@ export default function CharacterPage() {
   useEffect(() => {
     supabase
       .from('wow_characters')
-      .select('id, region, realm, name')
+      .select(CHARACTER_COLUMNS)
       .eq('id', charId ?? '')
       .maybeSingle()
       .then(({ data, error }) => {
@@ -56,7 +58,10 @@ export default function CharacterPage() {
 
   useEffect(() => {
     if (!char) return
-    Promise.all([getProfile(char), getMedia(char).catch(() => undefined), getMythic(char)])
+    // Mythic+ gibt es nur in Retail.
+    const mythicData =
+      char.game === 'retail' ? getMythic(char) : Promise.resolve({ profile: {} as MythicProfile, runs: [] as MythicRun[] })
+    Promise.all([getProfile(char), getMedia(char).catch(() => undefined), mythicData])
       .then(([p, m, mp]) => {
         setProfile(p)
         setMedia(m)
@@ -69,7 +74,7 @@ export default function CharacterPage() {
   useEffect(() => {
     if (!char || !profile || !mythic || snapshotDone.current) return
     snapshotDone.current = true
-    const itemLevel = profile.equipped_item_level
+    const itemLevel = profile.equipped_item_level ?? null
     const rating = mythic.profile.current_mythic_rating?.rating ?? null
     ;(async () => {
       const { data } = await supabase
@@ -92,6 +97,9 @@ export default function CharacterPage() {
   if (!char) return <>{error ? <p role="alert">{error}</p> : <p>Lade…</p>}</>
 
   const render = asset(media, 'main-raw') ?? asset(media, 'inset')
+  // Classic/Forever: kein Mythic+ und kein Erfolgs-Index (versionierte static-Namespaces).
+  const tabs = char.game === 'retail' ? TABS : TABS.filter((t) => t.id === 'goals' || t.id === 'history')
+  const activeTab = tabs.some((t) => t.id === tab) ? tab : tabs[0].id
   return (
     <>
       <p><Link to="/apps/wow">← Alle Charaktere</Link></p>
@@ -108,9 +116,11 @@ export default function CharacterPage() {
               <p>
                 {profile.guild && <>&lt;{profile.guild.name}&gt; · </>}
                 {profile.realm.name} ({char.region.toUpperCase()})
+                {char.game !== 'retail' && <> · {gameLabel(char.game)}</>}
               </p>
               <p>
-                <strong>ilvl {profile.equipped_item_level}</strong> · {profile.achievement_points} Erfolgspunkte
+                {profile.equipped_item_level != null && <strong>ilvl {profile.equipped_item_level}</strong>}
+                {profile.achievement_points != null && <> · {profile.achievement_points} Erfolgspunkte</>}
                 {mythic?.profile.current_mythic_rating && (
                   <>
                     {' · '}
@@ -134,16 +144,16 @@ export default function CharacterPage() {
       </nav>
       {error && <p role="alert">{error}</p>}
       <div className="tabs" role="tablist">
-        {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
+        {tabs.map((t) => (
+          <button key={t.id} role="tab" aria-selected={activeTab === t.id} className={activeTab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
             {t.label}
           </button>
         ))}
       </div>
-      {tab === 'mplus' && <MythicTab data={mythic} />}
-      {tab === 'goals' && <GoalsTab char={char} />}
-      {tab === 'history' && <HistoryTab char={char} reloadKey={snapshotKey} />}
-      {tab === 'achievements' && <AchievementsTab char={char} />}
+      {activeTab === 'mplus' && <MythicTab data={mythic} />}
+      {activeTab === 'goals' && <GoalsTab char={char} />}
+      {activeTab === 'history' && <HistoryTab char={char} reloadKey={snapshotKey} />}
+      {activeTab === 'achievements' && <AchievementsTab char={char} />}
     </>
   )
 }

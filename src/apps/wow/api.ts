@@ -3,12 +3,30 @@ import { supabase } from '../../lib/supabase'
 export type Region = 'eu' | 'us'
 type Namespace = 'profile' | 'static' | 'dynamic'
 
+// Spielversionen; der Proxy (api/wow.ts) bildet sie auf Blizzards Namespaces ab.
+export type Game = 'retail' | 'classic' | 'classic1x' | 'classicann' | 'forever'
+
+export const GAMES: { id: Game; label: string }[] = [
+  { id: 'retail', label: 'Retail' },
+  { id: 'classic', label: 'Classic (Progression)' },
+  { id: 'classic1x', label: 'Classic Era / Hardcore / SoD' },
+  { id: 'classicann', label: 'Classic Anniversary' },
+  { id: 'forever', label: 'WoW: Forever' },
+]
+
+export const gameLabel = (g: Game) => GAMES.find((x) => x.id === g)?.label ?? g
+
 export interface Character {
   id: string
   region: Region
   realm: string
   name: string
+  game: Game
+  group_id: string | null
+  position: number
 }
+
+export const CHARACTER_COLUMNS = 'id, region, realm, name, game, group_id, position'
 
 export class WowError extends Error {
   constructor(public status: number, message: string) {
@@ -17,9 +35,10 @@ export class WowError extends Error {
 }
 
 // Ruft die Blizzard API über den Proxy api/wow.ts auf (Client-Secret bleibt auf dem Server).
-async function wowFetch<T>(region: Region, namespace: Namespace, path: string): Promise<T> {
+async function wowFetch<T>(region: Region, namespace: Namespace, path: string, game: Game = 'retail'): Promise<T> {
   const { data } = await supabase.auth.getSession()
   const params = new URLSearchParams({ region, namespace, path })
+  if (game !== 'retail') params.set('game', game)
   const res = await fetch(`/api/wow?${params}`, {
     headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
   })
@@ -52,9 +71,10 @@ export interface Profile {
   active_spec?: { name: string }
   realm: { name: string; slug: string }
   guild?: { name: string }
-  equipped_item_level: number
-  average_item_level: number
-  achievement_points: number
+  // Fehlen je nach Spielversion (z. B. Erfolgspunkte in Classic Era).
+  equipped_item_level?: number
+  average_item_level?: number
+  achievement_points?: number
 }
 
 export interface Media {
@@ -95,8 +115,9 @@ export interface CharacterAchievement {
 const charPath = (c: Character, suffix = '') =>
   `/profile/wow/character/${c.realm}/${encodeURIComponent(c.name.toLowerCase())}${suffix}`
 
-export const getProfile = (c: Character) => wowFetch<Profile>(c.region, 'profile', charPath(c))
-export const getMedia = (c: Character) => wowFetch<Media>(c.region, 'profile', charPath(c, '/character-media'))
+export const getProfile = (c: Character) => wowFetch<Profile>(c.region, 'profile', charPath(c), c.game)
+export const getMedia = (c: Character) =>
+  wowFetch<Media>(c.region, 'profile', charPath(c, '/character-media'), c.game)
 
 export async function getMythic(c: Character) {
   let profile: MythicProfile
@@ -123,8 +144,8 @@ export const getAchievements = (c: Character) =>
 export const getAchievementIndex = (region: Region) =>
   wowFetch<{ achievements: Ref[] }>(region, 'static', '/data/wow/achievement/index')
 
-export const getRealms = (region: Region) =>
-  wowFetch<{ realms: { id: number; name: string | null; slug: string }[] }>(region, 'dynamic', '/data/wow/realm/index')
+export const getRealms = (region: Region, game: Game) =>
+  wowFetch<{ realms: { id: number; name: string | null; slug: string }[] }>(region, 'dynamic', '/data/wow/realm/index', game)
 
 export const asset = (media: Media | undefined, key: string) => media?.assets?.find((a) => a.key === key)?.value
 
