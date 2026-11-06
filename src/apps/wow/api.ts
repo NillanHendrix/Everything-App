@@ -124,7 +124,7 @@ export const getAchievementIndex = (region: Region) =>
   wowFetch<{ achievements: Ref[] }>(region, 'static', '/data/wow/achievement/index')
 
 export const getRealms = (region: Region) =>
-  wowFetch<{ realms: { id: number; name: string; slug: string }[] }>(region, 'dynamic', '/data/wow/realm/index')
+  wowFetch<{ realms: { id: number; name: string | null; slug: string }[] }>(region, 'dynamic', '/data/wow/realm/index')
 
 export const asset = (media: Media | undefined, key: string) => media?.assets?.find((a) => a.key === key)?.value
 

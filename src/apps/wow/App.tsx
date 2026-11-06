@@ -55,7 +55,14 @@ function Overview() {
   useEffect(() => {
     setRealms([])
     getRealms(region)
-      .then((data) => setRealms(data.realms.sort((a, b) => a.name.localeCompare(b.name))))
+      .then((data) =>
+        setRealms(
+          data.realms
+            // Blizzard liefert für manche Realms keinen deutschen Namen (null): Slug als Ersatz.
+            .map((r) => ({ name: r.name ?? r.slug, slug: r.slug }))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        ),
+      )
       .catch((e: Error) => setError(`Realms: ${e.message}`))
   }, [region])
 

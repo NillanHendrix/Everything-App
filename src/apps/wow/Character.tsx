@@ -156,7 +156,7 @@ function formatTime(ms: number) {
 function MythicTab({ data }: { data?: { profile: MythicProfile; runs: MythicRun[] } }) {
   if (!data) return <p>Lade…</p>
   const rating = data.profile.current_mythic_rating
-  const runs = [...data.runs].sort((a, b) => a.dungeon.name.localeCompare(b.dungeon.name))
+  const runs = [...data.runs].sort((a, b) => (a.dungeon.name ?? '').localeCompare(b.dungeon.name ?? ''))
   return (
     <section>
       <p>
