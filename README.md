@@ -51,16 +51,16 @@ Das `Dockerfile` baut das Frontend und startet `server/index.mjs`: einen abhäng
 1. In Coolify: *New Resource* → Git-Repository → Build Pack **Dockerfile**.
 2. *Ports Exposes*: `3000`. Domain eintragen (HTTPS übernimmt Coolify/Traefik).
 3. Environment Variables:
-   - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`: **„Build Variable" anhaken** (werden beim Build ins Bundle eingebettet) und zusätzlich zur Laufzeit verfügbar lassen (`api/wow.ts` prüft damit das Login).
+   - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`: normale Laufzeit-Variablen. Der Server setzt sie beim Ausliefern in `index.html` ein (`window.__ENV__`), der Build braucht sie nicht.
    - `BLIZZARD_CLIENT_ID`, `BLIZZARD_CLIENT_SECRET`: nur Laufzeit (für die WoW-App).
 4. Healthcheck: `GET /healthz` (ist auch im `Dockerfile` hinterlegt).
 5. In Supabase unter *Authentication → URL Configuration* die neue Domain als Site-URL bzw. Redirect-URL eintragen.
 
-Nach Änderungen an `VITE_`-Variablen neu bauen (Redeploy), nicht nur neu starten.
+Nach Änderungen an Variablen reicht ein Neustart, ein neuer Build ist nicht nötig.
 
 Lokal testen: `npm run build && npm start` (Port über `PORT`, Standard 3000; braucht Node ≥ 22.18 für die `.ts`-Dateien in `api/`). Oder mit Docker:
 
 ```sh
-docker build --build-arg VITE_SUPABASE_URL=... --build-arg VITE_SUPABASE_ANON_KEY=... -t everything-app .
+docker build -t everything-app .
 docker run -p 3000:3000 --env-file .env everything-app
 ```

@@ -3,10 +3,10 @@
 // die auf Vercel als Functions laufen. Node >= 22.18 lädt die .ts-Dateien per Type-Stripping.
 import { createServer } from 'node:http'
 import { createReadStream } from 'node:fs'
-import { stat } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createGzip } from 'node:zlib'
+import { createGzip, gzipSync } from 'node:zlib'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const DIST = join(ROOT, 'dist')
@@ -65,6 +65,38 @@ function sendFile(req, res, path, size, cacheControl) {
   ;(gzip ? stream.pipe(createGzip()) : stream).pipe(res)
 }
 
+// Öffentliche Client-Konfiguration zur Laufzeit statt zur Build-Zeit: so braucht der Docker-Build
+// keine Variablen, und dasselbe Image läuft mit jeder Supabase-Instanz (src/lib/supabase.ts).
+const PUBLIC_ENV = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
+
+async function sendIndex(req, res) {
+  let html
+  try {
+    html = await readFile(join(DIST, 'index.html'), 'utf8')
+  } catch {
+    return sendJson(res, 500, { error: 'dist/index.html fehlt – vorher `npm run build` ausführen' })
+  }
+  const env = Object.fromEntries(PUBLIC_ENV.filter((k) => process.env[k]).map((k) => [k, process.env[k]]))
+  // "<" escapen, damit ein Wert das <script> nicht beenden kann.
+  const script = `<script>window.__ENV__=${JSON.stringify(env).replace(/</g, '\\u003c')}</script>`
+  html = html.replace('<head>', `<head>${script}`)
+
+  const headers = {
+    'Content-Type': TYPES['.html'],
+    'Cache-Control': 'no-cache',
+    'X-Content-Type-Options': 'nosniff',
+    Vary: 'Accept-Encoding',
+  }
+  let body = Buffer.from(html)
+  if (/\bgzip\b/.test(req.headers['accept-encoding'] ?? '')) {
+    body = gzipSync(body)
+    headers['Content-Encoding'] = 'gzip'
+  }
+  headers['Content-Length'] = body.length
+  res.writeHead(200, headers)
+  res.end(req.method === 'HEAD' ? undefined : body)
+}
+
 async function handleApi(req, res, name, url) {
   const load = Object.hasOwn(API, name) ? API[name] : null
   if (!load) return sendJson(res, 404, { error: 'Nicht gefunden' })
@@ -104,6 +136,8 @@ const server = createServer(async (req, res) => {
       return res.end()
     }
 
+    if (pathname === '/' || pathname === '/index.html') return await sendIndex(req, res)
+
     // Statische Datei (Pfad-Traversal ausgeschlossen).
     const filePath = normalize(join(DIST, pathname))
     if (filePath.startsWith(DIST + '/')) {
@@ -122,10 +156,7 @@ const server = createServer(async (req, res) => {
       return res.end('Nicht gefunden')
     }
 
-    const index = join(DIST, 'index.html')
-    const s = await fileAt(index)
-    if (!s) return sendJson(res, 500, { error: 'dist/index.html fehlt – vorher `npm run build` ausführen' })
-    return sendFile(req, res, index, s.size, 'no-cache')
+    return await sendIndex(req, res)
   } catch (e) {
     console.error(e)
     if (!res.headersSent) sendJson(res, 500, { error: 'Serverfehler' })

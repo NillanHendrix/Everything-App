@@ -9,16 +9,9 @@ COPY package.json package-lock.json ./
 # (wie Vercel). Den Lockfile trotzdem aktuell halten (lokal `npm install` und committen).
 RUN npm install --no-audit --no-fund
 
-# VITE_-Variablen werden beim Build ins Bundle eingebettet, müssen also als Build-Args
-# ankommen (in Coolify: Env-Var als "Build Variable" markieren).
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
-    VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
-
+# Der Build braucht keine Variablen: VITE_SUPABASE_URL/-ANON_KEY setzt der Server zur
+# Laufzeit in index.html ein (window.__ENV__, siehe server/index.mjs und src/lib/supabase.ts).
 COPY . .
-RUN test -n "$VITE_SUPABASE_URL" && test -n "$VITE_SUPABASE_ANON_KEY" \
-    || (echo "VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY fehlen als Build-Variablen" && exit 1)
 RUN npm run build
 
 # ---- Runtime ----
