@@ -11,7 +11,6 @@ import { createGzip } from 'node:zlib'
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const DIST = join(ROOT, 'dist')
 const PORT = Number(process.env.PORT) || 3000
-const HOST = process.env.HOST || '0.0.0.0'
 
 // Gleiche Routen wie auf Vercel: /api/<name> → api/<name>.ts (export GET).
 const API = {
@@ -134,7 +133,9 @@ const server = createServer(async (req, res) => {
   }
 })
 
-server.listen(PORT, HOST, () => console.log(`Everything App läuft auf http://${HOST}:${PORT}`))
+// Ohne Host-Angabe lauscht Node auf allen Interfaces (IPv4 und IPv6). Bewusst kein HOST aus der
+// Umgebung: Plattformen setzen die Variable teils mit anderer Bedeutung.
+server.listen(PORT, () => console.log(`Everything App läuft auf Port ${PORT}`))
 
 // Coolify stoppt Container per SIGTERM: offene Verbindungen sauber beenden.
 for (const signal of ['SIGTERM', 'SIGINT']) {

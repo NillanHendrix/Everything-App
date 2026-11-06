@@ -5,7 +5,9 @@ FROM node:24-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+# npm install statt npm ci: toleriert einen Lockfile, der nicht ganz zu package.json passt
+# (wie Vercel). Den Lockfile trotzdem aktuell halten (lokal `npm install` und committen).
+RUN npm install --no-audit --no-fund
 
 # VITE_-Variablen werden beim Build ins Bundle eingebettet, müssen also als Build-Args
 # ankommen (in Coolify: Env-Var als "Build Variable" markieren).
