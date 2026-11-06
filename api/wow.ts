@@ -1,4 +1,4 @@
-// Vercel Function: schmaler Proxy zur Blizzard API. Das Client-Secret bleibt auf dem Server.
+// Vercel Function (self-hosted über server/index.mjs): schmaler Proxy zur Blizzard API. Das Client-Secret bleibt auf dem Server.
 // Aufruf: /api/wow?region=eu&namespace=profile&path=/profile/wow/character/<realm>/<name>
 
 declare const process: { env: Record<string, string | undefined> }

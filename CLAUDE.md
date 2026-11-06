@@ -4,14 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-"Everything App": a single-page shell (React 19 + Vite + TypeScript + Supabase, deployed on Vercel) that hosts multiple independent mini-apps under `/apps/<id>` and switches between them without a page reload. UI strings and code comments are in German.
+"Everything App": a single-page shell (React 19 + Vite + TypeScript + Supabase, deployable on Vercel or self-hosted via Docker/Coolify) that hosts multiple independent mini-apps under `/apps/<id>` and switches between them without a page reload. UI strings and code comments are in German.
 
 ## Commands
 
 - `npm install`
 - `npm run dev` — Vite dev server
 - `npm run build` — `tsc -b && vite build` (the type check is the only static check; there is no linter or test suite)
-- `npm run preview` — serve the production build
+- `npm run preview` — serve the production build (static only, no `/api`)
+- `npm start` — `server/index.mjs`: production server for self-hosting (serves `dist/` + `/api`); needs a prior build and Node ≥ 22.18
 
 Setup: copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. `src/lib/supabase.ts` throws at startup if they are missing. Database migrations in `supabase/migrations/` are run manually in the Supabase SQL editor (no CLI tooling).
 
@@ -27,7 +28,9 @@ Setup: copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPAB
 
 **Deploy/chunk handling.** `src/main.tsx` handles `vite:preloadError` by reloading once (guarded by a `sessionStorage` flag), since old chunks vanish after a Vercel deploy. `vercel.json` rewrites all routes except `/api/*` to `index.html`.
 
-**Serverless API.** `api/` holds Vercel Functions (Web-standard `export async function GET(request: Request)`). They are outside the `tsconfig` `include`, so `tsc -b` doesn't check them; Vercel compiles them. `api/wow.ts` proxies the Blizzard API: it verifies the caller's Supabase access token (`Authorization: Bearer`, checked via `/auth/v1/user`), only allows whitelisted regions/namespaces/paths, and caches the OAuth client-credentials token in module scope. Server-only env vars: `BLIZZARD_CLIENT_ID`, `BLIZZARD_CLIENT_SECRET`. `npm run dev` has no functions; set `API_PROXY_TARGET` in `.env` (Vite proxies `/api` there) or use `npx vercel dev`.
+**Serverless API.** `api/` holds Vercel Functions (Web-standard `export async function GET(request: Request)`). They are outside the `tsconfig` `include`, so `tsc -b` doesn't check them; Vercel compiles them. `api/wow.ts` proxies the Blizzard API: it verifies the caller's Supabase access token (`Authorization: Bearer`, checked via `/auth/v1/user`), only allows whitelisted regions/namespaces/paths, and caches the OAuth client-credentials token in module scope. Server-only env vars: `BLIZZARD_CLIENT_ID`, `BLIZZARD_CLIENT_SECRET`. `npm run dev` has no functions; set `API_PROXY_TARGET` in `.env` (Vite proxies `/api` there, e.g. to a deployment or a local `npm start`) or use `npx vercel dev`.
+
+**Self-hosting (Coolify).** `Dockerfile` (multi-stage, `node:24-alpine`) builds with `VITE_SUPABASE_*` passed as build args (mark them "Build Variable" in Coolify) and runs `server/index.mjs`, a dependency-free `node:http` server: static `dist/` with SPA fallback (missing `/assets/*` or files with an extension return 404 so `vite:preloadError` still triggers; `/assets/*` cached immutable, everything else `no-cache`; gzip), `/healthz`, and `/api/<name>` mapped through the explicit `API` table in the server to `api/<name>.ts`'s exported `GET`, imported directly via Node's built-in type stripping (so `api/` files must stay erasable-syntax TS: no enums/namespaces/parameter properties). A new API function must be added to that table. Listens on `PORT` (default 3000).
 
 ## Adding or changing an app
 

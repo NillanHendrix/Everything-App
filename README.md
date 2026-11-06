@@ -1,6 +1,6 @@
 # Everything App
 
-Shell mit Header, der zwischen Mini-Apps wechselt, ohne die Seite neu zu laden. React + Vite + Supabase + Vercel.
+Shell mit Header, der zwischen Mini-Apps wechselt, ohne die Seite neu zu laden. React + Vite + Supabase, deploybar auf Vercel oder selbst gehostet (Docker/Coolify).
 
 ## Setup
 
@@ -36,10 +36,31 @@ Datenbanktabellen bekommen das Präfix `<id>_`, eine `user_id uuid default auth.
 
 ## Neue Version ausliefern
 
-`version` im Manifest erhöhen, committen, pushen. Vercel baut und deployt automatisch. Jede App ist ein eigener Chunk. Offene Tabs laden nach einem Deploy einmalig neu, falls ein Chunk nicht mehr existiert (`vite:preloadError` in `src/main.tsx`).
+`version` im Manifest erhöhen, committen, pushen. Vercel bzw. Coolify baut und deployt automatisch. Jede App ist ein eigener Chunk. Offene Tabs laden nach einem Deploy einmalig neu, falls ein Chunk nicht mehr existiert (`vite:preloadError` in `src/main.tsx`).
 
 ## Deployment auf Vercel
 
 Repo importieren (Framework: Vite), Env-Vars `VITE_SUPABASE_URL` und `VITE_SUPABASE_ANON_KEY` setzen. `vercel.json` leitet alle Routen außer `/api/*` auf `index.html` um.
 
 Für die WoW-App (`wow`) zusätzlich `BLIZZARD_CLIENT_ID` und `BLIZZARD_CLIENT_SECRET` setzen (API-Client unter https://develop.battle.net anlegen). Die Blizzard API läuft über die Vercel Function `api/wow.ts`; lokal entweder `npx vercel dev` nutzen oder in `.env` `API_PROXY_TARGET` auf ein Deployment setzen.
+
+## Deployment auf Coolify (Self-Hosting)
+
+Das `Dockerfile` baut das Frontend und startet `server/index.mjs`: einen abhängigkeitsfreien Node-Server, der `dist/` mit SPA-Fallback ausliefert und `/api/<name>` auf die Funktionen in `api/` abbildet (wie auf Vercel). `vercel.json` wird dabei nicht gebraucht.
+
+1. In Coolify: *New Resource* → Git-Repository → Build Pack **Dockerfile**.
+2. *Ports Exposes*: `3000`. Domain eintragen (HTTPS übernimmt Coolify/Traefik).
+3. Environment Variables:
+   - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`: **„Build Variable" anhaken** (werden beim Build ins Bundle eingebettet) und zusätzlich zur Laufzeit verfügbar lassen (`api/wow.ts` prüft damit das Login).
+   - `BLIZZARD_CLIENT_ID`, `BLIZZARD_CLIENT_SECRET`: nur Laufzeit (für die WoW-App).
+4. Healthcheck: `GET /healthz` (ist auch im `Dockerfile` hinterlegt).
+5. In Supabase unter *Authentication → URL Configuration* die neue Domain als Site-URL bzw. Redirect-URL eintragen.
+
+Nach Änderungen an `VITE_`-Variablen neu bauen (Redeploy), nicht nur neu starten.
+
+Lokal testen: `npm run build && npm start` (Port über `PORT`, Standard 3000; braucht Node ≥ 22.18 für die `.ts`-Dateien in `api/`). Oder mit Docker:
+
+```sh
+docker build --build-arg VITE_SUPABASE_URL=... --build-arg VITE_SUPABASE_ANON_KEY=... -t everything-app .
+docker run -p 3000:3000 --env-file .env everything-app
+```
