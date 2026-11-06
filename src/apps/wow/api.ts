@@ -16,6 +16,21 @@ export const GAMES: { id: Game; label: string }[] = [
 
 export const gameLabel = (g: Game) => GAMES.find((x) => x.id === g)?.label ?? g
 
+// WoW: Forever ist realmlos: Statt eines Realms wird das Regelwerk gespeichert (Spalte realm),
+// bis Blizzard dokumentiert, wie Forever-Charaktere in der API adressiert werden.
+export const FOREVER_RULESETS = [
+  { slug: 'normal', name: 'Normal (PvE)' },
+  { slug: 'pvp', name: 'PvP' },
+  { slug: 'rp', name: 'Rollenspiel' },
+  { slug: 'rp-pvp', name: 'Rollenspiel-PvP' },
+]
+
+export const realmLabel = (c: Pick<Character, 'game' | 'realm'>) =>
+  c.game === 'forever' ? (FOREVER_RULESETS.find((r) => r.slug === c.realm)?.name ?? c.realm) : c.realm
+
+// Anzeige, solange die API keine Forever-Charaktere liefert (Stand Nov. 2026: 404).
+export const FOREVER_NO_DATA = 'Blizzard-API liefert für WoW: Forever noch keine Charakterdaten'
+
 export interface Character {
   id: string
   region: Region
@@ -43,7 +58,10 @@ async function wowFetch<T>(region: Region, namespace: Namespace, path: string, g
     headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
   })
   if (!res.ok) {
-    if (res.status === 404) throw new WowError(404, 'Nicht gefunden (Charakter existiert nicht oder Profil ist privat)')
+    if (res.status === 404) {
+      const msg = namespace === 'profile' ? 'Nicht gefunden (Charakter existiert nicht oder Profil ist privat)' : 'Nicht gefunden (404)'
+      throw new WowError(404, msg)
+    }
     const body = (await res.json().catch(() => null)) as { error?: string } | null
     throw new WowError(res.status, body?.error ?? `HTTP ${res.status}`)
   }

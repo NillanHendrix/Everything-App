@@ -6,12 +6,14 @@ import {
   CHARACTER_COLUMNS,
   CLASS_COLORS,
   cssColor,
+  FOREVER_NO_DATA,
   gameLabel,
   getAchievementIndex,
   getAchievements,
   getMedia,
   getMythic,
   getProfile,
+  WowError,
   type Character,
   type CharacterAchievement,
   type Criteria,
@@ -67,7 +69,9 @@ export default function CharacterPage() {
         setMedia(m)
         setMythic(mp)
       })
-      .catch((e: Error) => setError(e.message))
+      .catch((e: Error) =>
+        setError(char.game === 'forever' && e instanceof WowError && e.status === 404 ? FOREVER_NO_DATA : e.message),
+      )
   }, [char])
 
   // Snapshot für den Verlauf speichern, wenn sich ilvl oder Rating seit dem letzten geändert haben.

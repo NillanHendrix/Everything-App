@@ -5,11 +5,15 @@ import {
   asset,
   CHARACTER_COLUMNS,
   CLASS_COLORS,
+  FOREVER_NO_DATA,
+  FOREVER_RULESETS,
   gameLabel,
   GAMES,
   getMedia,
   getProfile,
   getRealms,
+  realmLabel,
+  WowError,
   type Character,
   type Game,
   type Media,
@@ -74,7 +78,8 @@ function Overview() {
         const [profile, media] = await Promise.all([getProfile(c), getMedia(c).catch(() => undefined)])
         setSummaries((prev) => ({ ...prev, [c.id]: { profile, media } }))
       } catch (e) {
-        setSummaries((prev) => ({ ...prev, [c.id]: { error: (e as Error).message } }))
+        const msg = c.game === 'forever' && e instanceof WowError && e.status === 404 ? FOREVER_NO_DATA : (e as Error).message
+        setSummaries((prev) => ({ ...prev, [c.id]: { error: msg } }))
       }
     })
   }, [])
@@ -87,6 +92,11 @@ function Overview() {
     setRealms([])
     setRealm('')
     setRealmError('')
+    if (game === 'forever') {
+      setRealms(FOREVER_RULESETS)
+      setRealm('normal')
+      return
+    }
     getRealms(region, game)
       .then((data) =>
         setRealms(
@@ -227,7 +237,7 @@ function Overview() {
           <div>
             <strong>{p?.name ?? c.name}</strong>
             <small>
-              {p?.realm.name ?? c.realm} · {c.region.toUpperCase()}
+              {p?.realm.name ?? realmLabel(c)} · {c.region.toUpperCase()}
               {c.game !== 'retail' && <> · <span className="game">{gameLabel(c.game)}</span></>}
             </small>
             <small>
@@ -298,8 +308,8 @@ function Overview() {
         {realmError ? (
           <input value={realm} onChange={(e) => setRealm(e.target.value)} placeholder="Realm-Slug, z. B. thunderstrike" required />
         ) : (
-          <select value={realm} onChange={(e) => setRealm(e.target.value)} required aria-label="Realm">
-            <option value="">{realms.length ? 'Realm wählen' : 'Lade Realms…'}</option>
+          <select value={realm} onChange={(e) => setRealm(e.target.value)} required aria-label={game === 'forever' ? 'Regelwerk' : 'Realm'}>
+            {game !== 'forever' && <option value="">{realms.length ? 'Realm wählen' : 'Lade Realms…'}</option>}
             {realms.map((r) => (
               <option key={r.slug} value={r.slug}>{r.name}</option>
             ))}
