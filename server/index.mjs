@@ -166,7 +166,17 @@ const server = createServer(async (req, res) => {
 
 // Ohne Host-Angabe lauscht Node auf allen Interfaces (IPv4 und IPv6). Bewusst kein HOST aus der
 // Umgebung: Plattformen setzen die Variable teils mit anderer Bedeutung.
-server.listen(PORT, () => console.log(`Everything App läuft auf Port ${PORT}`))
+server.listen(PORT, () => {
+  console.log(`Everything App läuft auf Port ${PORT}`)
+  // Diagnose ohne Werte: welche erwarteten Variablen fehlen, und welche ähnlich benannten gibt es?
+  const expected = [...PUBLIC_ENV, 'BLIZZARD_CLIENT_ID', 'BLIZZARD_CLIENT_SECRET']
+  const missing = expected.filter((k) => !process.env[k])
+  if (missing.length) console.warn(`Fehlende/leere Umgebungsvariablen: ${missing.join(', ')}`)
+  const similar = Object.keys(process.env).filter((k) => /supabase|blizzard/i.test(k) && !expected.includes(k))
+  if (similar.length) console.warn(`Ähnlich benannte Variablen gefunden: ${similar.join(', ')}`)
+  const empty = expected.filter((k) => k in process.env && !process.env[k])
+  if (empty.length) console.warn(`Vorhanden, aber leer: ${empty.join(', ')}`)
+})
 
 // Coolify stoppt Container per SIGTERM: offene Verbindungen sauber beenden.
 for (const signal of ['SIGTERM', 'SIGINT']) {
