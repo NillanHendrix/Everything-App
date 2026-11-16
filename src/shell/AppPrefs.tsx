@@ -74,7 +74,7 @@ export function AppPrefsProvider({ children }: { children: ReactNode }) {
       ids.splice(index < 0 ? ids.length : index, 0, id)
       setPrefs((prev) => {
         const next = { ...prev }
-        ids.forEach((appId, i) => (next[appId] = { archived: false, ...prev[appId], position: i }))
+        ids.forEach((appId, i) => (next[appId] = { archived: prev[appId]?.archived ?? false, position: i }))
         return next
       })
       save(ids.map((appId, i) => ({ app_id: appId, position: i })))
@@ -84,7 +84,7 @@ export function AppPrefsProvider({ children }: { children: ReactNode }) {
 
   const setArchived = useCallback(
     (id: string, value: boolean) => {
-      setPrefs((prev) => ({ ...prev, [id]: { position: null, ...prev[id], archived: value } }))
+      setPrefs((prev) => ({ ...prev, [id]: { position: prev[id]?.position ?? null, archived: value } }))
       save([{ app_id: id, archived: value }])
     },
     [save],
