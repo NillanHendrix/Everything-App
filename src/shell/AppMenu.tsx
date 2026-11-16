@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useMatch, useNavigate } from 'react-router-dom'
-import { apps, findApp } from '../registry'
+import { findApp } from '../registry'
+import { useAppPrefs } from './AppPrefs'
 
 export function AppMenu() {
   const navigate = useNavigate()
   const match = useMatch('/apps/:appId/*')
   const current = findApp(match?.params.appId)
+  const { visible, archived } = useAppPrefs()
 
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -15,8 +17,10 @@ export function AppMenu() {
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return q ? apps.filter((a) => a.name.toLowerCase().includes(q) || a.id.includes(q)) : apps
-  }, [query])
+    // Archivierte Apps sind ausgeblendet, über die Suche aber weiter erreichbar.
+    return q ? [...visible, ...archived].filter((a) => a.name.toLowerCase().includes(q) || a.id.includes(q)) : visible
+  }, [query, visible, archived])
+  const archivedIds = useMemo(() => new Set(archived.map((a) => a.id)), [archived])
 
   useEffect(() => {
     if (!open) return
@@ -81,7 +85,7 @@ export function AppMenu() {
                 onPointerEnter={() => setActive(i)}
                 onClick={() => select(app.id)}
               >
-                <span>{app.icon}</span> {app.name} <small>v{app.version}</small>
+                <span>{app.icon}</span> {app.name} <small>{archivedIds.has(app.id) ? 'Archiv' : `v${app.version}`}</small>
               </li>
             ))}
             {results.length === 0 && <li className="empty">Keine App gefunden</li>}

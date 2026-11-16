@@ -26,6 +26,27 @@ main { padding: 24px; max-width: 1000px; margin: 0 auto; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
 .card { display: flex; flex-direction: column; gap: 4px; padding: 20px; border: 1px solid #8884; border-radius: 12px; text-decoration: none; color: inherit; }
 .card .icon { font-size: 32px; }
+.home-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.home-head button, .card-tools button, .archive button { font: inherit; padding: 6px 12px; border: 1px solid #8884; border-radius: 8px; background: none; color: inherit; cursor: pointer; }
+.home .hint { opacity: .7; }
+.card-slot { position: relative; display: flex; flex-direction: column; border-radius: 12px; }
+.card-slot > .card { flex: 1; }
+.card-slot[draggable="true"] { cursor: grab; }
+.card-slot.dragging { opacity: .4; }
+.card-slot.over { outline: 2px dashed currentColor; outline-offset: 2px; }
+.grid.editing .card { animation: wiggle .3s ease-in-out infinite alternate; }
+@keyframes wiggle { from { transform: rotate(-.6deg); } to { transform: rotate(.6deg); } }
+@media (prefers-reduced-motion: reduce) { .grid.editing .card { animation: none; } }
+.card-tools { display: flex; justify-content: center; gap: 4px; margin-top: 6px; }
+.card-tools button { padding: 4px 10px; }
+.card-tools button:disabled { opacity: .3; cursor: default; }
+.archive-drop { margin-top: 16px; padding: 20px; text-align: center; border: 2px dashed #8886; border-radius: 12px; opacity: .8; }
+.archive-drop.over { border-color: currentColor; background: #8882; opacity: 1; }
+.archive { margin-top: 24px; }
+.archive summary { cursor: pointer; font-weight: 600; }
+.archive ul { list-style: none; padding: 0; display: grid; gap: 8px; margin-top: 12px; }
+.archive li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid #8884; border-radius: 8px; }
+.archive a { text-decoration: none; color: inherit; }
 .login { display: flex; flex-direction: column; gap: 10px; max-width: 320px; margin: 15vh auto; padding: 0 16px; }
 .login input, .login button, .user button { padding: 8px 12px; font: inherit; }
 .login .link { background: none; border: none; text-decoration: underline; cursor: pointer; }
